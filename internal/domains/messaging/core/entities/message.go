@@ -8,5 +8,5 @@ type Message struct {
 	ID values.MessageID
 
 	Contents values.MessageContents
-	Metadata values.MessageMetadata
+	Metadata *values.MessageMetadata
 }

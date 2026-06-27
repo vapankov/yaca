@@ -10,7 +10,7 @@ import (
 
 type MessageRespository interface {
 	CreateMessage(ctx context.Context, message *entities.Message) error
-	SearchMessages(ctx context.Context, params *SearchMessagesQuery) ([]entities.Message, error)
+	SearchMessages(ctx context.Context, params *SearchMessagesQuery) ([]*entities.Message, error)
 }
 
 type MessageIDGenerator interface {

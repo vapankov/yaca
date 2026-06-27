@@ -24,7 +24,7 @@ func (ucs *UseCases) PostMessage(ctx context.Context, params *PostMessageParams)
 		message = entities.Message{
 			ID:       messageID,
 			Contents: contents,
-			Metadata: values.MessageMetadata{
+			Metadata: &values.MessageMetadata{
 				CreatedAt: createdAt,
 			},
 		}
