@@ -1,0 +1,23 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Run default tasks.
+    cmds:
+      - task: generate
+      - task: lint
+
+  lint:
+    desc: Run linter.
+    cmds:
+      - golangci-lint run
+
+  generate:
+    desc: Run all generation task.
+    cmds:
+      - task: generate-mocks
+
+  generate-mocks:
+    desc: Generate mocks.
+    cmds:
+      - mockery
