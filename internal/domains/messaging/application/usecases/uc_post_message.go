@@ -17,7 +17,7 @@ type PostMessageResult struct {
 
 func (ucs *UseCases) PostMessage(ctx context.Context, params *PostMessageParams) (*PostMessageResult, error) {
 	var (
-		messageID = ucs.messageIDGenerator.GenerateMessageID()
+		messageID = ucs.messageIDGenerator.Generate()
 		contents  = params.MessageContents
 		createdAt = values.MessageCreatedAt(ucs.clock.Now())
 

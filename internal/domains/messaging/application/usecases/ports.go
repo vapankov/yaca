@@ -14,7 +14,7 @@ type MessageRespository interface {
 }
 
 type MessageIDGenerator interface {
-	GenerateMessageID() values.MessageID
+	Generate() values.MessageID
 }
 
 type Clock interface {
