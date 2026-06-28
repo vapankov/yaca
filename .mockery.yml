@@ -22,7 +22,7 @@ require-template-schema-exists: true
 template: testify
 template-schema: '{{.Template}}.schema.json'
 packages:
-  github.com/vapankov/yaca/internal/domains/messaging/infrastructure/ports/repositories/message/file:
+  github.com/vapankov/yaca/internal/domains/messaging/infrastructure/adapters/outbound/repositories/message/filestore:
     config:
       all: true
       structname: 'mock{{.InterfaceName}}'
