@@ -17,6 +17,6 @@ type MessageIDGenerator interface {
 	GenerateMessageID() values.MessageID
 }
 
-type TimeProvider interface {
-	TimeNow() time.Time
+type Clock interface {
+	Now() time.Time
 }

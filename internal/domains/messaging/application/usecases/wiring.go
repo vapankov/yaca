@@ -3,17 +3,17 @@ package usecases
 type UseCases struct {
 	messageRepository  MessageRespository
 	messageIDGenerator MessageIDGenerator
-	timeProvider       TimeProvider
+	clock              Clock
 }
 
 func New(
 	messageRepository MessageRespository,
 	messageIDGenerator MessageIDGenerator,
-	timeProvider TimeProvider,
+	clock Clock,
 ) *UseCases {
 	return &UseCases{
 		messageRepository:  messageRepository,
 		messageIDGenerator: messageIDGenerator,
-		timeProvider:       timeProvider,
+		clock:              clock,
 	}
 }

@@ -19,7 +19,7 @@ func (ucs *UseCases) PostMessage(ctx context.Context, params *PostMessageParams)
 	var (
 		messageID = ucs.messageIDGenerator.GenerateMessageID()
 		contents  = params.MessageContents
-		createdAt = values.MessageCreatedAt(ucs.timeProvider.TimeNow())
+		createdAt = values.MessageCreatedAt(ucs.clock.Now())
 
 		message = entities.Message{
 			ID:       messageID,
