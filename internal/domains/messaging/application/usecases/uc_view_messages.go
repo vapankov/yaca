@@ -10,7 +10,7 @@ import (
 )
 
 type ViewMessagesParams struct {
-	Pagination types.Pagination
+	Pagination *types.Pagination
 }
 
 type (
@@ -30,7 +30,7 @@ func (ucs *UseCases) ViewMessages(ctx context.Context, params *ViewMessagesParam
 		Sort: &SearchMessagesQuerySort{
 			CreatedAt: types.OrderDesc,
 		},
-		Pagination: &params.Pagination,
+		Pagination: params.Pagination,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("repository: search messages: %w", err)
