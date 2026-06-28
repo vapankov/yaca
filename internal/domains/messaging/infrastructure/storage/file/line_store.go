@@ -11,19 +11,19 @@ import (
 
 const delimeter = '\n'
 
-type LineStorage struct {
+type LineStore struct {
 	fileName       string
 	base64Encoding *base64.Encoding
 }
 
-func NewLineStorage(fileName string) *LineStorage {
-	return &LineStorage{
+func NewLineStore(fileName string) *LineStore {
+	return &LineStore{
 		fileName:       fileName,
 		base64Encoding: base64.StdEncoding,
 	}
 }
 
-func (s *LineStorage) Insert(line string) (retErr error) {
+func (s *LineStore) Insert(line string) (retErr error) {
 	f, err := os.OpenFile(s.fileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
@@ -45,7 +45,7 @@ func (s *LineStorage) Insert(line string) (retErr error) {
 	return nil
 }
 
-func (s *LineStorage) Read() (ls []string, retErr error) {
+func (s *LineStore) Read() (ls []string, retErr error) {
 	f, err := os.OpenFile(s.fileName, os.O_RDONLY, 0)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("open file: %w", err)

@@ -2,7 +2,7 @@
 // github.com/vektra/mockery
 // template: testify
 
-package file
+package filestore
 
 import (
 	mock "github.com/stretchr/testify/mock"

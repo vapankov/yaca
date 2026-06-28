@@ -16,7 +16,7 @@ func TestLineStorage(t *testing.T) {
 	t.Run("read empty", func(t *testing.T) {
 		t.Parallel()
 
-		storage := file.NewLineStorage(t.Name())
+		storage := file.NewLineStore(t.Name())
 
 		lines, err := storage.Read()
 		require.NoError(t, err)
@@ -27,7 +27,7 @@ func TestLineStorage(t *testing.T) {
 		t.Parallel()
 
 		fileName := strings.ReplaceAll(t.Name(), "/", "_")
-		storage := file.NewLineStorage(fileName)
+		storage := file.NewLineStore(fileName)
 
 		t.Cleanup(func() {
 			if err := os.Remove(fileName); err != nil {
@@ -50,7 +50,7 @@ func TestLineStorage(t *testing.T) {
 		t.Parallel()
 
 		fileName := strings.ReplaceAll(t.Name(), "/", "_")
-		storage := file.NewLineStorage(fileName)
+		storage := file.NewLineStore(fileName)
 
 		t.Cleanup(func() {
 			if err := os.Remove(fileName); err != nil {

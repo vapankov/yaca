@@ -1,4 +1,4 @@
-package file
+package filestore
 
 type FileLineStorage interface {
 	Insert(line string) error
