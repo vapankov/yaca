@@ -21,3 +21,15 @@ tasks:
     desc: Generate mocks.
     cmds:
       - mockery
+
+  cli-post:
+    desc: Post message using CLI.
+    vars:
+      DATA: '{{default "Hello World!" .DATA}}'
+    cmds:
+      - go run ./cmd/cli -cmd post -data {{.DATA}}
+
+  cli-view:
+    desc: Veiw messages using CLI.
+    cmds:
+      - go run ./cmd/cli -cmd view
