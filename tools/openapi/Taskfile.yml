@@ -54,8 +54,11 @@ tasks:
       PATHS_DIR: '{{.DOMAIN_DIR}}/paths'
       PATHS_LIST:
         sh: find {{.PATHS_DIR}} -name '*.yaml' | sort | xargs echo
+
+      INFO_YAML: '{{.DOMAIN_DIR}}/info.yaml'
     cmds:
       - mkdir -p "{{.MERGE_DIR}}"
+      - cp {{.INFO_YAML}} {{.MERGE_DIR}}/{{.DOMAIN}}_info.yaml
       - |
           for file in {{.PATHS_LIST}}; do
             rel="${file#{{.PATHS_DIR}}/}"
@@ -65,11 +68,9 @@ tasks:
   merge-shared:
     desc: Merge shared specs.
     vars:
-      INFO_YAML: '{{.SRC_DIR}}/info.yaml'
       SHARED_YAML: '{{.SRC_DIR}}/shared.yaml'
     cmds:
       - mkdir -p "{{.MERGE_DIR}}"
-      - cp {{.INFO_YAML}} {{.MERGE_DIR}}/info.yaml
       - cp {{.SHARED_YAML}} {{.MERGE_DIR}}/shared.yaml
 
   join-domains:

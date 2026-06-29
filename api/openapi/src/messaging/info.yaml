@@ -1,0 +1,6 @@
+openapi: "3.0.0"
+
+info:
+  title: Messaging API
+  description: API for messaging
+  version: 1.0.0
