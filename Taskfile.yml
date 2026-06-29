@@ -32,7 +32,7 @@ tasks:
   generate-mocks:
     desc: Generate mocks.
     cmds:
-      - mockery
+      - go tool mockery
 
   generate-openapi-messaging-bundle:
     desc: Generate messaging domain OpenAPI bundle.
