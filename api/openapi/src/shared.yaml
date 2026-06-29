@@ -1,0 +1,22 @@
+openapi: "3.0.0"
+
+components:
+  schemas:
+    ErrorResponse:
+      description: |
+        Error response
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          description: Status code
+          type: integer
+          format: uint32
+          example: 0
+        message:
+          description: Status message
+          type: string
+          example: OK
+      additionalProperties: false

@@ -1,5 +1,10 @@
 version: '3'
 
+includes:
+  openapi:
+    taskfile: ./tools/openapi/Taskfile.yml
+    internal: true
+
 tasks:
   default:
     desc: Run default tasks.
@@ -21,6 +26,11 @@ tasks:
     desc: Generate mocks.
     cmds:
       - mockery
+
+  generate-openapi-bundle:
+    desc: Generate OpenAPI bundle.
+    cmds:
+      - task: openapi:bundle
 
   cli-post:
     desc: Post message using CLI.

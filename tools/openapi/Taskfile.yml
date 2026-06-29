@@ -1,0 +1,97 @@
+version: '3'
+
+vars:
+  REDOCLY_IMAGE_NAME: '{{.REDOCLY_IMAGE_NAME | default "redocly/cli"}}'
+  REDOCLY_IMAGE_TAG: '{{.REDOCLY_IMAGE_TAG | default "2.32.2"}}'
+  REDOCLY_IMAGE: '{{.REDOCLY_IMAGE_NAME}}:{{.REDOCLY_IMAGE_TAG}}'
+
+  OPENAPI_DIR: '{{.TASKFILE_DIR}}/../../api/openapi'
+  SRC_DIR: '{{.OPENAPI_DIR}}/src'
+  DIST_DIR: '{{.OPENAPI_DIR}}/dist'
+
+  MERGE_DIR: '{{.DIST_DIR}}/merge'
+
+  JOINED_FILE: 'openapi.join.yaml'
+  BUNDLE_FILE: 'openapi.bundle.yaml'
+
+tasks:
+  bundle:
+    desc: Run all tasks to create a bundle.
+    cmds:
+      - task: merge-shared
+
+      - task: merge-domain
+        vars:
+          DOMAIN : messaging
+
+      - task: join-domains
+
+      - task: make-bundle
+
+      - task: cleanup
+
+  merge-domain:
+    desc: Merge domain specs into destination directory.
+    vars:
+      DOMAIN: '{{.DOMAIN}}'
+      DOMAIN_DIR: '{{.SRC_DIR}}/{{.DOMAIN}}'
+
+      JOIN_FILE: '{{.DIST_DIR}}/{{.DOMAIN}}.join.yaml'
+      BUNDLE_FILE: '{{.DIST_DIR}}/{{.DOMAIN}}.bundle.yaml'
+
+      PATHS_DIR: '{{.DOMAIN_DIR}}/paths'
+      PATHS_LIST:
+        sh: find {{.PATHS_DIR}} -name '*.yaml' | sort | xargs echo
+    cmds:
+      - mkdir -p "{{.MERGE_DIR}}"
+      - |
+          for file in {{.PATHS_LIST}}; do
+            rel="${file#{{.PATHS_DIR}}/}"
+            cp "$file" "{{.MERGE_DIR}}/{{.DOMAIN}}_${rel}"
+          done
+  
+  merge-shared:
+    desc: Merge shared specs.
+    vars:
+      INFO_YAML: '{{.SRC_DIR}}/info.yaml'
+      SHARED_YAML: '{{.SRC_DIR}}/shared.yaml'
+    cmds:
+      - mkdir -p "{{.MERGE_DIR}}"
+      - cp {{.INFO_YAML}} {{.MERGE_DIR}}/info.yaml
+      - cp {{.SHARED_YAML}} {{.MERGE_DIR}}/shared.yaml
+
+  join-domains:
+    desc: Join merged domain specs together.
+    vars:
+      JOIN_FILES:
+        sh: |
+          find $MERGE_DIR -name '*.yaml' | sort | sed "s|^{{.OPENAPI_DIR}}/||" | xargs echo
+    cmds:
+      - mkdir -p "{{.DIST_DIR}}"
+      - mkdir -p "{{.MERGE_DIR}}"
+      - 
+      - |
+        docker run --rm \
+          -v "{{.OPENAPI_DIR}}:/spec" \
+          -w /spec \
+          {{.REDOCLY_IMAGE}} \
+          join {{.JOIN_FILES}} -o dist/{{.JOINED_FILE}}
+
+  make-bundle:
+    desc: Make bundle from join.
+    cmds:
+      - mkdir -p "{{.DIST_DIR}}"
+      - |
+        docker run --rm \
+          -v "{{.OPENAPI_DIR}}:/spec" \
+          -w /spec \
+          {{.REDOCLY_IMAGE}} \
+          bundle dist/{{.JOINED_FILE}} -o dist/{{.BUNDLE_FILE}}
+      - |
+        sed -i '/^    servers: \[\]$/d' {{.DIST_DIR}}/{{.BUNDLE_FILE}}
+
+  cleanup:
+    desc: Cleanup after bundling.
+    cmds:
+      - rm -rf "{{.MERGE_DIR}}"
+      - rm -rf "{{.DIST_DIR}}/{{.JOINED_FILE}}"
