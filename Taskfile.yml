@@ -27,10 +27,10 @@ tasks:
     cmds:
       - mockery
 
-  generate-openapi-bundle:
-    desc: Generate OpenAPI bundle.
+  generate-openapi-messaging-bundle:
+    desc: Generate messaging domain OpenAPI bundle.
     cmds:
-      - task: openapi:bundle
+      - task: openapi:bundle-messaging
 
   cli-post:
     desc: Post message using CLI.

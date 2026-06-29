@@ -11,24 +11,36 @@ vars:
 
   MERGE_DIR: '{{.DIST_DIR}}/merge'
 
-  JOINED_FILE: 'openapi.join.yaml'
-  BUNDLE_FILE: 'openapi.bundle.yaml'
-
 tasks:
-  bundle:
+  bundle-messaging:
+    desc: Make bundle for messaging domain.
+    cmds:
+      - task: bundle-domain
+        vars:
+          DOMAIN: messaging
+
+  bundle-domain:
     desc: Run all tasks to create a bundle.
+    vars:
+        DOMAIN: '{{.DOMAIN}}'
     cmds:
       - task: merge-shared
 
       - task: merge-domain
         vars:
-          DOMAIN : messaging
+          DOMAIN : '{{.DOMAIN}}'
 
       - task: join-domains
+        vars:
+          DOMAIN: '{{.DOMAIN}}'
 
       - task: make-bundle
+        vars:
+          DOMAIN: '{{.DOMAIN}}'
 
       - task: cleanup
+        vars:
+          DOMAIN: '{{.DOMAIN}}'
 
   merge-domain:
     desc: Merge domain specs into destination directory.
@@ -63,13 +75,14 @@ tasks:
   join-domains:
     desc: Join merged domain specs together.
     vars:
+      DOMAIN: '{{.DOMAIN}}'
+      JOINED_FILE: 'openapi.{{.DOMAIN}}.join.yaml'
       JOIN_FILES:
         sh: |
           find $MERGE_DIR -name '*.yaml' | sort | sed "s|^{{.OPENAPI_DIR}}/||" | xargs echo
     cmds:
       - mkdir -p "{{.DIST_DIR}}"
       - mkdir -p "{{.MERGE_DIR}}"
-      - 
       - |
         docker run --rm \
           -v "{{.OPENAPI_DIR}}:/spec" \
@@ -79,6 +92,10 @@ tasks:
 
   make-bundle:
     desc: Make bundle from join.
+    vars:
+      DOMAIN: '{{.DOMAIN}}'
+      JOINED_FILE: 'openapi.{{.DOMAIN}}.join.yaml'
+      BUNDLE_FILE: 'openapi.{{.DOMAIN}}.bundle.yaml'
     cmds:
       - mkdir -p "{{.DIST_DIR}}"
       - |
@@ -92,6 +109,9 @@ tasks:
 
   cleanup:
     desc: Cleanup after bundling.
+    vars:
+      DOMAIN: '{{.DOMAIN}}'
+      JOINED_FILE: 'openapi.{{.DOMAIN}}.join.yaml'
     cmds:
       - rm -rf "{{.MERGE_DIR}}"
       - rm -rf "{{.DIST_DIR}}/{{.JOINED_FILE}}"
