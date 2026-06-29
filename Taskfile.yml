@@ -20,7 +20,14 @@ tasks:
   generate:
     desc: Run all generation task.
     cmds:
+      - task: generate-openapi-messaging-bundle
+      - task: generate-go
       - task: generate-mocks
+
+  generate-go:
+    desc: Run go:generate.
+    cmds:
+      - go generate ./...
 
   generate-mocks:
     desc: Generate mocks.

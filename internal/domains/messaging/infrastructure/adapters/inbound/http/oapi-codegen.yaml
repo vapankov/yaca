@@ -1,0 +1,9 @@
+package: http
+generate:
+  strict-server: true
+  models: true
+  server-urls: true
+  embedded-spec: true
+output: messaging.gen.go
+output-options:
+  skip-prune: true
