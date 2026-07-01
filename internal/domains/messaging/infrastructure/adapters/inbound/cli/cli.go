@@ -61,7 +61,7 @@ func Run() {
 			return
 		}
 
-		if _, err := messagingUsecases.PostMessage(context.TODO(), &usecases.PostMessageParams{
+		if _, err := messagingUsecases.PostMessage(context.TODO(), &usecases.PostMessageInput{
 			MessageContents: values.MessageContents(messagingData),
 		}); err != nil {
 			fmt.Println("ERROR", err.Error())
@@ -71,7 +71,7 @@ func Run() {
 		fmt.Println("MESSAGE SENT")
 
 	case messagingCommandView:
-		result, err := messagingUsecases.ViewMessages(context.TODO(), &usecases.ViewMessagesParams{})
+		result, err := messagingUsecases.ViewMessages(context.TODO(), &usecases.ViewMessagesInput{})
 		if err != nil {
 			fmt.Println("ERROR", err.Error())
 			return

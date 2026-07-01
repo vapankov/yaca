@@ -9,12 +9,12 @@ import (
 	"github.com/vapankov/yaca/internal/domains/messaging/core/values"
 )
 
-type ViewMessagesParams struct {
+type ViewMessagesInput struct {
 	Pagination *types.Pagination
 }
 
 type (
-	ViewMessagesResult struct {
+	ViewMessagesOutput struct {
 		Items []ViewMessagesResultItem
 	}
 
@@ -25,12 +25,12 @@ type (
 	}
 )
 
-func (ucs *UseCases) ViewMessages(ctx context.Context, params *ViewMessagesParams) (*ViewMessagesResult, error) {
+func (ucs *UseCases) ViewMessages(ctx context.Context, input *ViewMessagesInput) (*ViewMessagesOutput, error) {
 	messages, err := ucs.messageRepository.SearchMessages(ctx, &SearchMessagesQuery{
 		Sort: &SearchMessagesQuerySort{
 			CreatedAt: types.OrderDesc,
 		},
-		Pagination: params.Pagination,
+		Pagination: input.Pagination,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("repository: search messages: %w", err)
@@ -45,7 +45,7 @@ func (ucs *UseCases) ViewMessages(ctx context.Context, params *ViewMessagesParam
 		}
 	}
 
-	return &ViewMessagesResult{
+	return &ViewMessagesOutput{
 		Items: items,
 	}, nil
 }

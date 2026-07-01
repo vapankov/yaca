@@ -7,11 +7,6 @@ tags:
   - name: messaging
     x-displayName: messaging
 paths:
-  post:
-    operationId: postMessage
-    summary: Post message
-    description: |
-      Posts message
   /messages:
     get:
       tags:
@@ -50,26 +45,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - messaging
+      operationId: postMessage
+      summary: Post message
+      description: |
+        Posts message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostMessageRequest'
+      responses:
+        '200':
+          description: A successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostMessageResponse'
+        default:
+          description: An unexpected error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
-    PostMessageRequest:
-      description: |
-        Message parameters for posting
-      type: object
-      required:
-        - contents
-      properties:
-        contents:
-          description: Message contents
-          type: string
-          example: Hello World!
-      additionalProperties: false
-    PostMessageResponse:
-      description: Result of message posting
-      type: object
-      required: []
-      properties: {}
-      additionalProperties: false
     ViewMessagesResponse:
       description: Available messages for viewing
       type: object
@@ -105,6 +108,24 @@ components:
           format: date-time
           example: 2006-01-02T15:04:05Z07:00
       additionalProperties: false
+    PostMessageRequest:
+      description: |
+        Message parameters for posting
+      type: object
+      required:
+        - contents
+      properties:
+        contents:
+          description: Message contents
+          type: string
+          example: Hello World!
+      additionalProperties: false
+    PostMessageResponse:
+      description: Result of message posting
+      type: object
+      required: []
+      properties: {}
+      additionalProperties: false
     ErrorResponse:
       description: |
         Error response
@@ -124,6 +145,6 @@ components:
           example: OK
       additionalProperties: false
 x-tagGroups:
-  - name: messaging_view_messages
+  - name: messaging_messages
     tags:
       - messaging

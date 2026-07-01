@@ -37,7 +37,9 @@ tasks:
   generate-openapi-messaging-bundle:
     desc: Generate messaging domain OpenAPI bundle.
     cmds:
+      - task: openapi:cleanup
       - task: openapi:bundle-messaging
+      - task: openapi:cleanup
 
   cli-post:
     desc: Post message using CLI.

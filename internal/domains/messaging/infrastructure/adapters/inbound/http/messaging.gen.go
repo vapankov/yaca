@@ -6,14 +6,20 @@ package http
 import (
 	"bytes"
 	"compress/flate"
+	"context"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 )
 
 // ErrorResponse Error response
@@ -61,24 +67,420 @@ type ViewMessagesParams struct {
 	PaginationPageSize *uint32 `form:"pagination.pageSize,omitempty" json:"pagination.pageSize,omitempty"`
 }
 
+// PostMessageJSONRequestBody defines body for PostMessage for application/json ContentType.
+type PostMessageJSONRequestBody = PostMessageRequest
+
+// ServerInterface represents all server handlers.
+type ServerInterface interface {
+	// View messages
+	// (GET /messages)
+	ViewMessages(w http.ResponseWriter, r *http.Request, params ViewMessagesParams)
+	// Post message
+	// (POST /messages)
+	PostMessage(w http.ResponseWriter, r *http.Request)
+}
+
+// Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
+
+type Unimplemented struct{}
+
+// View messages
+// (GET /messages)
+func (_ Unimplemented) ViewMessages(w http.ResponseWriter, r *http.Request, params ViewMessagesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Post message
+// (POST /messages)
+func (_ Unimplemented) PostMessage(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ServerInterfaceWrapper converts contexts to parameters.
+type ServerInterfaceWrapper struct {
+	Handler            ServerInterface
+	HandlerMiddlewares []MiddlewareFunc
+	ErrorHandlerFunc   func(w http.ResponseWriter, r *http.Request, err error)
+}
+
+type MiddlewareFunc func(http.Handler) http.Handler
+
+// ViewMessages operation middleware
+func (siw *ServerInterfaceWrapper) ViewMessages(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ViewMessagesParams
+
+	// ------------- Optional query parameter "pagination.pageNumber" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "pagination.pageNumber", r.URL.Query(), &params.PaginationPageNumber, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "pagination.pageNumber"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "pagination.pageNumber", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "pagination.pageSize" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "pagination.pageSize", r.URL.Query(), &params.PaginationPageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "pagination.pageSize"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "pagination.pageSize", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ViewMessages(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostMessage operation middleware
+func (siw *ServerInterfaceWrapper) PostMessage(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostMessage(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+type UnescapedCookieParamError struct {
+	ParamName string
+	Err       error
+}
+
+func (e *UnescapedCookieParamError) Error() string {
+	return fmt.Sprintf("error unescaping cookie parameter '%s'", e.ParamName)
+}
+
+func (e *UnescapedCookieParamError) Unwrap() error {
+	return e.Err
+}
+
+type UnmarshalingParamError struct {
+	ParamName string
+	Err       error
+}
+
+func (e *UnmarshalingParamError) Error() string {
+	return fmt.Sprintf("Error unmarshaling parameter %s as JSON: %s", e.ParamName, e.Err.Error())
+}
+
+func (e *UnmarshalingParamError) Unwrap() error {
+	return e.Err
+}
+
+type RequiredParamError struct {
+	ParamName string
+}
+
+func (e *RequiredParamError) Error() string {
+	return fmt.Sprintf("Query argument %s is required, but not found", e.ParamName)
+}
+
+type RequiredHeaderError struct {
+	ParamName string
+	Err       error
+}
+
+func (e *RequiredHeaderError) Error() string {
+	return fmt.Sprintf("Header parameter %s is required, but not found", e.ParamName)
+}
+
+func (e *RequiredHeaderError) Unwrap() error {
+	return e.Err
+}
+
+type InvalidParamFormatError struct {
+	ParamName string
+	Err       error
+}
+
+func (e *InvalidParamFormatError) Error() string {
+	return fmt.Sprintf("Invalid format for parameter %s: %s", e.ParamName, e.Err.Error())
+}
+
+func (e *InvalidParamFormatError) Unwrap() error {
+	return e.Err
+}
+
+type TooManyValuesForParamError struct {
+	ParamName string
+	Count     int
+}
+
+func (e *TooManyValuesForParamError) Error() string {
+	return fmt.Sprintf("Expected one value for %s, got %d", e.ParamName, e.Count)
+}
+
+// Handler creates http.Handler with routing matching OpenAPI spec.
+func Handler(si ServerInterface) http.Handler {
+	return HandlerWithOptions(si, ChiServerOptions{})
+}
+
+type ChiServerOptions struct {
+	BaseURL          string
+	BaseRouter       chi.Router
+	Middlewares      []MiddlewareFunc
+	ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
+}
+
+// HandlerFromMux creates http.Handler with routing matching OpenAPI spec based on the provided mux.
+func HandlerFromMux(si ServerInterface, r chi.Router) http.Handler {
+	return HandlerWithOptions(si, ChiServerOptions{
+		BaseRouter: r,
+	})
+}
+
+func HandlerFromMuxWithBaseURL(si ServerInterface, r chi.Router, baseURL string) http.Handler {
+	return HandlerWithOptions(si, ChiServerOptions{
+		BaseURL:    baseURL,
+		BaseRouter: r,
+	})
+}
+
+// HandlerWithOptions creates http.Handler with additional options
+func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handler {
+	r := options.BaseRouter
+
+	if r == nil {
+		r = chi.NewRouter()
+	}
+	if options.ErrorHandlerFunc == nil {
+		options.ErrorHandlerFunc = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	wrapper := ServerInterfaceWrapper{
+		Handler:            si,
+		HandlerMiddlewares: options.Middlewares,
+		ErrorHandlerFunc:   options.ErrorHandlerFunc,
+	}
+
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/messages", wrapper.ViewMessages)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/messages", wrapper.PostMessage)
+	})
+
+	return r
+}
+
+type ViewMessagesRequestObject struct {
+	Params ViewMessagesParams
+}
+
+type ViewMessagesResponseObject interface {
+	VisitViewMessagesResponse(w http.ResponseWriter) error
+}
+
+type ViewMessages200JSONResponse ViewMessagesResponse
+
+func (response ViewMessages200JSONResponse) VisitViewMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ViewMessagesdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response ViewMessagesdefaultJSONResponse) VisitViewMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostMessageRequestObject struct {
+	Body *PostMessageJSONRequestBody
+}
+
+type PostMessageResponseObject interface {
+	VisitPostMessageResponse(w http.ResponseWriter) error
+}
+
+type PostMessage200JSONResponse PostMessageResponse
+
+func (response PostMessage200JSONResponse) VisitPostMessageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostMessagedefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response PostMessagedefaultJSONResponse) VisitPostMessageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+// StrictServerInterface represents all server handlers.
+type StrictServerInterface interface {
+	// View messages
+	// (GET /messages)
+	ViewMessages(ctx context.Context, request ViewMessagesRequestObject) (ViewMessagesResponseObject, error)
+	// Post message
+	// (POST /messages)
+	PostMessage(ctx context.Context, request PostMessageRequestObject) (PostMessageResponseObject, error)
+}
+
+type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
+type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+
+type StrictHTTPServerOptions struct {
+	RequestErrorHandlerFunc  func(w http.ResponseWriter, r *http.Request, err error)
+	ResponseErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
+}
+
+func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
+	return &strictHandler{ssi: ssi, middlewares: middlewares, options: StrictHTTPServerOptions{
+		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		},
+		ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		},
+	}}
+}
+
+func NewStrictHandlerWithOptions(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc, options StrictHTTPServerOptions) ServerInterface {
+	return &strictHandler{ssi: ssi, middlewares: middlewares, options: options}
+}
+
+type strictHandler struct {
+	ssi         StrictServerInterface
+	middlewares []StrictMiddlewareFunc
+	options     StrictHTTPServerOptions
+}
+
+// ViewMessages operation middleware
+func (sh *strictHandler) ViewMessages(w http.ResponseWriter, r *http.Request, params ViewMessagesParams) {
+	var request ViewMessagesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ViewMessages(ctx, request.(ViewMessagesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ViewMessages")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ViewMessagesResponseObject); ok {
+		if err := validResponse.VisitViewMessagesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PostMessage operation middleware
+func (sh *strictHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
+	var request PostMessageRequestObject
+
+	var body PostMessageJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PostMessage(ctx, request.(PostMessageRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostMessage")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PostMessageResponseObject); ok {
+		if err := validResponse.VisitPostMessageResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"+eHd4zOn2f2EePajUaUeB/j4BDG31T8BAAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

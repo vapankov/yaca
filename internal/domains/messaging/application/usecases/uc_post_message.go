@@ -8,17 +8,17 @@ import (
 	"github.com/vapankov/yaca/internal/domains/messaging/core/values"
 )
 
-type PostMessageParams struct {
+type PostMessageInput struct {
 	MessageContents values.MessageContents
 }
 
-type PostMessageResult struct {
+type PostMessageOutput struct {
 }
 
-func (ucs *UseCases) PostMessage(ctx context.Context, params *PostMessageParams) (*PostMessageResult, error) {
+func (ucs *UseCases) PostMessage(ctx context.Context, input *PostMessageInput) (*PostMessageOutput, error) {
 	var (
 		messageID = ucs.messageIDGenerator.Generate()
-		contents  = params.MessageContents
+		contents  = input.MessageContents
 		createdAt = values.MessageCreatedAt(ucs.clock.Now())
 
 		message = entities.Message{
@@ -34,5 +34,5 @@ func (ucs *UseCases) PostMessage(ctx context.Context, params *PostMessageParams)
 		return nil, fmt.Errorf("repository: create message: %w", err)
 	}
 
-	return &PostMessageResult{}, nil
+	return &PostMessageOutput{}, nil
 }

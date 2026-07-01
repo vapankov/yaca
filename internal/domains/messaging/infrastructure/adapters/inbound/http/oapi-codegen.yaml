@@ -1,5 +1,6 @@
 package: http
 generate:
+  chi-server: true
   strict-server: true
   models: true
   server-urls: true

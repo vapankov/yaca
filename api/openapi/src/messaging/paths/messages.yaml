@@ -40,6 +40,33 @@ paths:
               schema:
                 $ref: 'shared.yaml#/components/schemas/ErrorResponse'
 
+    post:
+      tags:
+        - messaging
+      operationId: postMessage
+      summary: Post message
+      description: |
+        Posts message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostMessageRequest'
+      responses:
+        '200':
+          description: A successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostMessageResponse'
+        'default':
+          description: An unexpected error response
+          content:
+            application/json:
+              schema:
+                $ref: 'shared.yaml#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     ViewMessagesResponse:
@@ -77,4 +104,24 @@ components:
           type: string
           format: date-time
           example: 2006-01-02T15:04:05Z07:00
+      additionalProperties: false
+
+    PostMessageRequest:
+      description: |
+        Message parameters for posting
+      type: object
+      required:
+        - contents
+      properties:
+        contents:
+          description: Message contents
+          type: string
+          example: "Hello World!"
+      additionalProperties: false
+
+    PostMessageResponse:
+      description: Result of message posting
+      type: object
+      required: []
+      properties: {}
       additionalProperties: false
